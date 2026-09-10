@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>MR.MOO Ticket Scanner</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { width: 380px; margin: 0; padding: 0;
+    font: 13px/1.5 "Segoe UI", Sarabun, system-ui, sans-serif;
+    background: #16181c; color: #e8eaed; }
+  header { display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+    background: #1d2027; border-bottom: 1px solid #2c2f36; }
+  header h1 { font-size: 14px; margin: 0; flex: 1; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #2c2f36; color: #9aa0a6; }
+  .pill.on { background: #14532d; color: #4ade80; }
+  main { padding: 12px 14px 16px; }
+  section { margin-bottom: 16px; }
+  h2 { font-size: 12px; color: #9aa0a6; text-transform: uppercase;
+    letter-spacing: .04em; margin: 0 0 8px; }
+  label { display: block; font-size: 12px; margin-bottom: 4px; color: #c3c7cc; }
+  input[type=text], input[type=number], input[type=password], textarea, select {
+    width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid #333842;
+    background: #101216; color: #e8eaed; font: inherit; }
+  textarea { resize: vertical; min-height: 58px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field { margin-bottom: 10px; }
+  .hint { font-size: 11px; color: #6b7280; margin-top: 3px; }
+  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+  .check input { width: 15px; height: 15px; accent-color: #22c55e; }
+  button { padding: 8px 12px; border-radius: 8px; border: 1px solid #333842;
+    background: #252a33; color: #e8eaed; cursor: pointer; font: inherit; font-weight: 600; }
+  button:hover { background: #2f3542; }
+  button.go { background: #1a7f42; border-color: #1a7f42; }
+  button.go:hover { background: #22a054; }
+  button.danger { background: #7f1d1d; border-color: #7f1d1d; }
+  button.small { padding: 4px 8px; font-size: 11px; font-weight: 500; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .rule { border: 1px solid #2c2f36; border-radius: 10px; padding: 10px;
+    margin-bottom: 10px; background: #1a1d23; }
+  .rule-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .rule-hd input[type=text] { flex: 1; }
+  .thumb { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .thumb img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px;
+    border: 1px solid #333842; background: #101216; }
+  .thumb .meta { flex: 1; font-size: 11px; color: #9aa0a6; word-break: break-all; }
+  .warn { background: #2a1e10; border: 1px solid #7c4a12; color: #fbbf24;
+    border-radius: 8px; padding: 8px 10px; font-size: 11px; margin-bottom: 12px; }
+  .diag { font-size:11px; line-height:1.7; margin-bottom:12px; border-radius:8px;
+    padding:8px 10px; background:#101216; border:1px solid #23262c; }
+  .diag div { display:flex; gap:6px; }
+  .diag .k { flex:1; color:#9aa0a6; }
+  .diag .ok { color:#4ade80; } .diag .bad { color:#f87171; } .diag .warn { color:#fbbf24; }
+  .diag .fix { display:block; color:#fbbf24; margin-top:6px; padding-top:6px;
+    border-top:1px solid #23262c; }
+  .sends { font-size:11px; border-radius:8px; padding:6px 8px; margin-top:2px; }
+  .sends.ok { background:#0f2018; border:1px solid #1a5c3a; color:#6ee7b7; }
+  .sends.warn { background:#2a1e10; border:1px solid #7c4a12; color:#fbbf24; }
+  .sends.bad { background:#2a1010; border:1px solid #7f1d1d; color:#fca5a5; }
+  .keywarn { font-size:11px; margin-top:4px; border-radius:8px; padding:6px 8px;
+    background:#2a1010; border:1px solid #7f1d1d; color:#fca5a5; }
+  .airesult { font-size:11px; margin-top:8px; border-radius:8px; padding:8px 10px;
+    background:#101216; border:1px solid #23262c; color:#9aa0a6; white-space:pre-wrap; }
+  .airesult.ok { border-color:#1a5c3a; color:#6ee7b7; }
+  .airesult.no { border-color:#7c4a12; color:#fbbf24; }
+  .airesult.err { border-color:#7f1d1d; color:#f87171; }
+  .saved { color: #4ade80; font-size: 11px; min-height: 15px; text-align: center; margin-top: 8px; }
+  footer { padding: 0 14px 14px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    text-align: center; margin-bottom: 10px; }
+  .stats div { background: #1d2027; border-radius: 8px; padding: 6px 2px; }
+  .stats b { display: block; font-size: 15px; }
+  .stats span { font-size: 10px; color: #9aa0a6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MR.MOO Ticket Scanner</h1>
+  <span class="pill" id="conn">ยังไม่เชื่อมต่อ</span>
+</header>
+
+<main>
+  <div class="warn">
+    การคอมเมนต์อัตโนมัติผิดนโยบายของ Facebook และอาจทำให้บัญชีถูกจำกัด
+    แนะนำให้ใช้โหมด "ยืนยันก่อนส่ง" และตั้งเว้นระยะไว้สูง ๆ
+  </div>
+
+  <div class="stats">
+    <div><b id="s-scan">0</b><span>สแกน</span></div>
+    <div><b id="s-match">0</b><span>ตรงคำ</span></div>
+    <div><b id="s-sent">0</b><span>คอมเมนต์</span></div>
+    <div><b id="s-skip">0</b><span>ข้าม</span></div>
+  </div>
+  <div class="row" style="margin-bottom:8px">
+    <button class="go" id="btn-start">เริ่มสแกน</button>
+    <button class="danger" id="btn-stop">หยุด</button>
+  </div>
+  <div class="row" style="margin-bottom:8px">
+    <button class="go" id="btn-dash">เปิด Dashboard</button>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <button id="btn-diag">ตรวจสอบระบบ — หาสาเหตุที่ไม่ทำงาน</button>
+  </div>
+  <div id="diag" class="diag" hidden></div>
+
+  <section>
+    <h2>โหมดทำงาน</h2>
+    <div class="check">
+      <input type="checkbox" id="autoSend">
+      <label for="autoSend" style="margin:0">ส่งคอมเมนต์อัตโนมัติ (ไม่ต้องกดยืนยัน)</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="onlyGroups">
+      <label for="onlyGroups" style="margin:0">ทำงานเฉพาะหน้ากลุ่ม (/groups/)</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="expandSeeMore">
+      <label for="expandSeeMore" style="margin:0">กด "ดูเพิ่มเติม" เพื่ออ่านข้อความเต็ม</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="skipIfCommented">
+      <label for="skipIfCommented" style="margin:0">ข้ามโพสต์ที่เหมือนเคยคอมเมนต์แล้ว</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="debugLog">
+      <label for="debugLog" style="margin:0">แสดงเหตุผลทุกครั้งที่ข้ามโพสต์ (ช่วยหาสาเหตุ)</label>
+    </div>
+  </section>
+
+  <section>
+    <h2>ให้ AI ช่วยอ่านเนื้อหา</h2>
+    <div class="field">
+      <label for="aiMode">โหมด</label>
+      <select id="aiMode">
+        <option value="off">ปิด — ใช้คีย์เวิร์ดอย่างเดียว</option>
+        <option value="verify">ตรวจซ้ำ — AI ดูเฉพาะโพสต์ที่คีย์เวิร์ดจับได้ (กันคอมเมนต์ผิดคน)</option>
+        <option value="assist">ช่วยอ่าน — AI ดูโพสต์ที่พูดถึงตั๋ว/โรงหนังด้วย แม้คีย์เวิร์ดไม่ตรง</option>
+      </select>
+      <div class="hint">"ช่วยอ่าน" คือโหมดที่จับโพสต์ได้กว้างที่สุด แต่เรียก AI บ่อยกว่า</div>
+    </div>
+    <div class="field">
+      <label for="provider">ผู้ให้บริการ</label>
+      <select id="provider">
+        <option value="gemini">Google Gemini — key จาก AI Studio / Antigravity</option>
+        <option value="openai">OpenAI (ChatGPT API)</option>
+        <option value="custom">อื่น ๆ ที่ใช้รูปแบบเดียวกับ OpenAI</option>
+      </select>
+    </div>
+    <div class="field" id="customUrlField" hidden>
+      <label for="customUrl">URL ปลายทาง</label>
+      <input type="text" id="customUrl" placeholder="https://.../v1/chat/completions">
+      <div class="hint">กด "บันทึกการตั้งค่า" แล้ว Chrome จะขออนุญาตเข้าถึงโดเมนนี้</div>
+    </div>
+    <div class="field">
+      <label for="apiKey"><span id="keyLabel">Gemini</span> API key</label>
+      <input type="password" id="apiKey" placeholder="AIza...">
+      <div class="keywarn" id="keyWarn" hidden></div>
+      <div class="hint" id="keyHint">
+        สร้างที่ aistudio.google.com → Get API key · เก็บไว้ในเครื่องนี้เท่านั้น (ไม่ได้เข้ารหัส)
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="aiModelSelect">โมเดล</label>
+        <select id="aiModelSelect"></select>
+        <input type="text" id="aiModel" placeholder="ชื่อโมเดล" hidden style="margin-top:6px">
+      </div>
+      <div class="field">
+        <label for="aiMinConfidence">เกณฑ์ความมั่นใจขั้นต่ำ</label>
+        <input type="number" id="aiMinConfidence" min="0" max="1" step="0.05">
+      </div>
+      <div class="field">
+        <label for="maxAiCalls">เรียก AI สูงสุดต่อรอบ</label>
+        <input type="number" id="maxAiCalls" min="1" max="500">
+      </div>
+      <div class="field">
+        <label>ใช้ไปแล้ว</label>
+        <input type="text" id="aiUsage" readonly value="-">
+      </div>
+    </div>
+    <div class="field">
+      <label for="aiTest">ทดสอบ — วางข้อความโพสต์แล้วดูว่า AI ตัดสินยังไง</label>
+      <textarea id="aiTest" placeholder="หาตั๋วหนัง SF 2 ที่ รอบเย็นวันเสาร์ ใครขายต่อบ้างครับ"></textarea>
+    </div>
+    <div class="row">
+      <button id="btn-aitest">ทดสอบกับ AI</button>
+      <button id="btn-aireset">ล้างสถิติ/แคช AI</button>
+    </div>
+    <div id="aiResult" class="airesult"></div>
+  </section>
+
+  <section>
+    <h2>ถามราคาจาก MR.MOO</h2>
+    <div class="check">
+      <input type="checkbox" id="priceLookup">
+      <label for="priceLookup" style="margin:0">ถามราคาตั๋ว/ป๊อปคอร์นก่อนคอมเมนต์ แล้วเอาราคาจริงไปตอบลูกค้า</label>
+    </div>
+    <div class="field">
+      <label for="priceApiUrl">URL ของ API</label>
+      <input type="text" id="priceApiUrl" placeholder="https://api-mrmoomovie.siristudiophoto.com/api/v1">
+      <div class="hint">ใส่ถึง <code>/api/v1</code> พอ ระบบจะต่อ <code>/price-lookup</code> ให้เอง</div>
+    </div>
+    <div class="field">
+      <label for="priceApiKey">API key</label>
+      <input type="password" id="priceApiKey" placeholder="ค่าเดียวกับ ExtensionApi__ApiKey บนเซิร์ฟเวอร์">
+      <div class="hint">เก็บไว้ในเครื่องนี้เท่านั้น (ไม่ได้เข้ารหัส) · ถ้าหลุดให้เปลี่ยนค่าบนเซิร์ฟเวอร์แล้วกรอกใหม่</div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="priceMode">เอาข้อความราคาไปทำอะไร</label>
+        <select id="priceMode">
+          <option value="append">ต่อท้ายข้อความของกฎ</option>
+          <option value="replace">ใช้ข้อความราคาอย่างเดียว</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="priceTimeoutSec">รอ API ไม่เกิน (วินาที)</label>
+        <input type="number" id="priceTimeoutSec" min="2" max="30">
+      </div>
+    </div>
+    <div class="field">
+      <label for="priceTestCinema">ทดสอบ — พิมพ์ชื่อสาขาแบบที่ลูกค้าเขียนในโพสต์</label>
+      <input type="text" id="priceTestCinema" placeholder="เมกาบางนา">
+    </div>
+    <div class="row">
+      <button id="btn-priceperm">ขอสิทธิ์เข้าถึง API</button>
+      <button id="btn-pricetest">ทดสอบ</button>
+    </div>
+    <div id="priceResult" class="airesult"></div>
+    <div class="hint">
+      ถ้าปิดโหมด AI ไว้ ส่วนขยายจะไม่รู้ชื่อสาขาจากโพสต์ — ข้อความที่ได้กลับมาจะเป็นการถามสาขากลับแทน
+    </div>
+  </section>
+
+  <section>
+    <h2>วนหลายกลุ่ม</h2>
+    <div class="field">
+      <label for="groupUrls">ลิงก์กลุ่ม (บรรทัดละ 1 ลิงก์)</label>
+      <textarea id="groupUrls" rows="5"
+        placeholder="https://www.facebook.com/groups/111111&#10;https://www.facebook.com/groups/222222"></textarea>
+      <div class="hint" id="groupCount">ยังไม่ได้ใส่ลิงก์</div>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="rotateGroups">
+      <label for="rotateGroups" style="margin:0">แท็บเดียว วนไปทีละกลุ่ม</label>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="perGroupMinutes">อยู่กลุ่มละ (นาที)</label>
+        <input type="number" id="perGroupMinutes" min="0" max="120">
+      </div>
+      <div class="field">
+        <label for="idleScrollsToRotate">ไม่เจอโพสต์ใหม่กี่ครั้งแล้วไปต่อ</label>
+        <input type="number" id="idleScrollsToRotate" min="2" max="60">
+      </div>
+      <div class="field">
+        <label for="maxTabs">เปิดพร้อมกันสูงสุด (แท็บ)</label>
+        <input type="number" id="maxTabs" min="1" max="20">
+      </div>
+    </div>
+    <div class="row">
+      <button class="go" id="btn-open">เปิดทุกกลุ่มพร้อมกัน</button>
+      <button class="danger" id="btn-stopall">หยุด + ปิดแท็บ</button>
+    </div>
+    <div id="runState" class="sends"></div>
+    <div class="hint">
+      โควตาคอมเมนต์ใช้ร่วมกันทุกแท็บ เปิด 10 กลุ่มก็ยังคอมเมนต์รวมไม่เกินที่ตั้งไว้
+    </div>
+  </section>
+
+  <section>
+    <h2>แจ้งเตือนไปมือถือ</h2>
+    <div class="field">
+      <label for="notifyChannel">ช่องทาง</label>
+      <select id="notifyChannel">
+        <option value="off">ปิด</option>
+        <option value="telegram">Telegram</option>
+        <option value="discord">Discord webhook</option>
+        <option value="custom">อื่น ๆ (POST JSON)</option>
+      </select>
+    </div>
+
+    <div id="tgFields" hidden>
+      <div class="field">
+        <label for="tgToken">Bot token</label>
+        <input type="password" id="tgToken" placeholder="123456789:AAF...">
+        <div class="hint">ทักหา @BotFather ในไลน์ Telegram → /newbot → จะได้ token มา</div>
+      </div>
+      <div class="field">
+        <label for="tgChatId">Chat ID</label>
+        <input type="text" id="tgChatId" placeholder="123456789 หรือ -1001234567890">
+        <div class="hint">
+          ทักบอทของคุณ 1 ข้อความ แล้วเปิด
+          api.telegram.org/bot&lt;token&gt;/getUpdates เพื่อดูเลข chat id
+        </div>
+      </div>
+    </div>
+
+    <div class="field" id="hookField" hidden>
+      <label for="webhookUrl">URL ปลายทาง</label>
+      <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+    </div>
+
+    <div class="check">
+      <input type="checkbox" id="notifyComment">
+      <label for="notifyComment" style="margin:0">แจ้งเมื่อคอมเมนต์สำเร็จจริง</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="notifyPost">
+      <label for="notifyPost" style="margin:0">แจ้งเมื่อโพสต์ลงกลุ่ม</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="notifyError">
+      <label for="notifyError" style="margin:0">แจ้งเมื่อเกิดข้อผิดพลาด</label>
+    </div>
+
+    <div class="field">
+      <label for="statusEveryMin">รายงานสถานะทุกกี่นาที (0 = ปิด)</label>
+      <input type="number" id="statusEveryMin" min="0" max="720">
+      <div class="hint">สรุปว่ารันอยู่กี่ตัว แต่ละตัวสถานะอะไร วนไปกี่รอบ คอมเมนต์ไปกี่โพสต์</div>
+    </div>
+
+    <div class="row">
+      <button id="btn-notifytest">ทดสอบส่ง</button>
+      <button id="btn-notifystatus">ส่งรายงานเดี๋ยวนี้</button>
+    </div>
+    <div id="notifyResult" class="sends"></div>
+  </section>
+
+  <section>
+    <h2>จังหวะและโควตา</h2>
+    <div class="grid2">
+      <div class="field">
+        <label for="minGapSec">เว้นระยะขั้นต่ำ (วินาที)</label>
+        <input type="number" id="minGapSec" min="10" max="3600">
+      </div>
+      <div class="field">
+        <label for="maxPerHour">คอมเมนต์สูงสุด/ชั่วโมง</label>
+        <input type="number" id="maxPerHour" min="1" max="200">
+      </div>
+      <div class="field">
+        <label for="maxPerSession">สูงสุดต่อรอบ</label>
+        <input type="number" id="maxPerSession" min="1" max="500">
+      </div>
+      <div class="field">
+        <label for="maxAgeHours">เลื่อนย้อนหลังไม่เกิน (ชั่วโมง)</label>
+        <input type="number" id="maxAgeHours" min="0" max="720">
+      </div>
+      <div class="field">
+        <label for="scrollStep">ระยะเลื่อนต่อครั้ง (px)</label>
+        <input type="number" id="scrollStep" min="100" max="3000">
+      </div>
+      <div class="field">
+        <label for="scrollInterval">หน่วงระหว่างเลื่อน (ms)</label>
+        <input type="number" id="scrollInterval" min="300" max="10000">
+      </div>
+      <div class="field">
+        <label for="maxFailStreak">พลาดติดกันกี่ครั้งถึงหยุดบอท</label>
+        <input type="number" id="maxFailStreak" min="1" max="20">
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>คำที่ห้ามเจอ (ใช้ทุกกฎ)</h2>
+    <textarea id="globalExclude" placeholder="ขายตั๋ว, ปล่อยตั๋ว, ส่งต่อตั๋ว"></textarea>
+    <div class="hint">คั่นด้วยจุลภาคหรือขึ้นบรรทัดใหม่ — เจอคำใดคำหนึ่งจะข้ามโพสต์นั้นทันที</div>
+  </section>
+
+  <section>
+    <h2>โพสต์อัตโนมัติ (แยกจากคอมเมนต์)</h2>
+    <div class="check">
+      <input type="checkbox" id="autoPost">
+      <label for="autoPost" style="margin:0">เปิดการโพสต์อัตโนมัติ</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="postApprove">
+      <label for="postApprove" style="margin:0">ยืนยันก่อนโพสต์ทุกครั้ง</label>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="postsPerDay">โพสต์ได้วันละ</label>
+        <input type="number" id="postsPerDay" min="1" max="20">
+      </div>
+      <div class="field">
+        <label for="postGapMinutes">เว้นระยะระหว่างโพสต์ (นาที)</label>
+        <input type="number" id="postGapMinutes" min="1" max="1440">
+      </div>
+      <div class="field">
+        <label for="postPerGroupHours">ไม่โพสต์ซ้ำกลุ่มเดิมภายใน (ชม.)</label>
+        <input type="number" id="postPerGroupHours" min="1" max="720">
+      </div>
+      <div class="field">
+        <label>วันนี้โพสต์ไปแล้ว</label>
+        <input type="text" id="postUsage" readonly value="-">
+      </div>
+    </div>
+    <div id="posts"></div>
+    <div class="row">
+      <button class="small" id="btn-addpost">+ เพิ่มเทมเพลตโพสต์</button>
+      <button class="small" id="btn-postreset">รีเซ็ตตัวนับวันนี้</button>
+    </div>
+
+    <div class="rule" style="margin-top:12px">
+      <div class="check">
+        <input type="checkbox" id="qrEnabled">
+        <label for="qrEnabled" style="margin:0"><b>คอมเมนต์ QR ไลน์ใต้โพสต์ตัวเอง</b></label>
+      </div>
+      <div class="hint" style="margin:-4px 0 8px">
+        หลังโพสต์เสร็จ ระบบจะหาโพสต์นั้นในฟีดแล้วคอมเมนต์ QR ต่อท้ายให้อัตโนมัติ
+      </div>
+      <div class="field">
+        <label for="qrText">ข้อความคู่กับ QR</label>
+        <textarea id="qrText" placeholder="เช่น แอดไลน์ @313doroz สอบถาม/จองได้เลยครับ"></textarea>
+      </div>
+      <div class="field">
+        <label>รูป QR ไลน์</label>
+        <input type="file" accept="image/*" id="qrPick">
+        <div class="thumb">
+          <img id="qrThumb" alt="">
+          <div class="meta" id="qrMeta">ยังไม่ได้เลือกรูป</div>
+          <button class="small" id="qrRemove" hidden>ลบรูป</button>
+        </div>
+      </div>
+      <div id="qrSends" class="sends"></div>
+    </div>
+    <div class="hint">
+      โควตาโพสต์แยกจากคอมเมนต์คนละชุด นับรวมทุกแท็บ และรีเซ็ตเองเมื่อขึ้นวันใหม่
+    </div>
+  </section>
+
+  <section>
+    <h2>กฎการคอมเมนต์</h2>
+    <div id="rules"></div>
+    <button class="small" id="btn-add">+ เพิ่มกฎ</button>
+    <div class="hint">ระบบจะไล่กฎจากบนลงล่าง เจอกฎแรกที่ตรงแล้วใช้กฎนั้น</div>
+  </section>
+
+  <div class="row">
+    <button class="go" id="btn-save">บันทึกการตั้งค่า</button>
+    <button id="btn-clear">ล้างประวัติโพสต์</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="btn-export">ดาวน์โหลดเป็น JSON</button>
+    <button id="btn-import">โหลดจากไฟล์ JSON</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+  <div class="hint" style="text-align:center">
+    ไฟล์ JSON เก็บทั้งกฎ เทมเพลตโพสต์ และรูปภาพ ใช้ย้ายเครื่องหรือสำรองไว้ได้
+  </div>
+  <div class="saved" id="saved"></div>
+</main>
+
+<footer>
+  <div class="hint">ทางลัด: Alt+Shift+S เริ่ม/หยุด บนหน้า Facebook</div>
+</footer>
+
+<script src="popup.js"></script>
+</body>
+</html>

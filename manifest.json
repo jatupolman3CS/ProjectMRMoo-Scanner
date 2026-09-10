@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "MR.MOO Ticket Scanner",
+  "version": "3.1.1",
+  "description": "สแกนฟีดกลุ่ม Facebook หาโพสต์ที่ตามหาตั๋วหนัง แล้วคอมเมนต์รูปที่เตรียมไว้ให้อัตโนมัติ",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "*://*.facebook.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "MR.MOO Ticket Scanner"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.facebook.com/*"
+      ],
+      "js": [
+        "src/inject.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "*://*.facebook.com/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "world": "ISOLATED",
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}

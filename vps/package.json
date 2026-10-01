@@ -1,0 +1,12 @@
+{
+  "name": "mrmoo-vps-bot",
+  "private": true,
+  "description": "Headed Puppeteer + stealth bot for a Linux VPS (Xvfb + PM2)",
+  "main": "index.js",
+  "scripts": {
+    "start": "xvfb-run -a --server-args='-screen 0 1366x768x24' node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

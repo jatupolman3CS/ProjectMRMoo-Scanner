@@ -1000,6 +1000,28 @@ function showBootError(message) {
 
 window.addEventListener('error', (e) => showBootError(e.message));
 
+/*
+ * บน Linux ตัวเลือกไฟล์ของระบบดึง focus ออกจาก popup ทำให้ popup ปิดก่อนเลือกไฟล์เสร็จ
+ * จึงให้เลือกไฟล์ในแท็บเต็มหน้าแทน (แท็บไม่ปิดตัวเอง)
+ */
+const IN_TAB = new URLSearchParams(location.search).has('tab');
+if (IN_TAB) document.documentElement.classList.add('tab');
+
+function openAsTab() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('src/popup.html?tab=1') });
+  window.close();
+}
+
+if (!IN_TAB) {
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input[type=file]')) {
+      e.preventDefault();
+      openAsTab();
+    }
+  }, true);
+}
+
 (async () => {
   try {
   const out = await store.get(null);
@@ -1118,7 +1140,9 @@ window.addEventListener('error', (e) => showBootError(e.message));
   };
 
   $('btn-export').onclick = exportSettings;
-  $('btn-import').onclick = () => $('importFile').click();
+  $('btn-tab').hidden = IN_TAB;
+  $('btn-tab').onclick = openAsTab;
+  $('btn-import').onclick = () => (IN_TAB ? $('importFile').click() : openAsTab());
   $('importFile').onchange = async (e) => {
     const f = e.target.files && e.target.files[0];
     e.target.value = '';                       // เลือกไฟล์เดิมซ้ำได้

@@ -515,6 +515,7 @@ chrome.alarms.onAlarm.addListener(async (a) => {
   if (run.active) startTicker(run.intervalMs);      // ตั้งใหม่หลัง service worker ถูกปลุก
   else stopTicker();
   statusReport(false).catch(() => {});              // ถึงรอบรายงานหรือยัง
+  if (run.active) recycleIfDue(run).catch((err) => console.log('[MR.MOO] รีไซเคิลแท็บไม่สำเร็จ:', err.message));
 });
 
 /* แท็บที่กำลังทำงานถูกปิด — เอาออกจากรายการ ถ้าหมดแล้วก็จบรอบ */
@@ -551,10 +552,12 @@ async function openGroups() {
   await resetQuota();
 
   const tabIds = [];
+  const tabUrls = {};
   for (let i = 0; i < urls.length; i++) {
     try {
       const tab = await chrome.tabs.create({ url: urls[i], active: i === 0 });
       tabIds.push(tab.id);
+      tabUrls[tab.id] = urls[i];
     } catch (err) {
       return { ok: false, error: 'เปิดแท็บไม่สำเร็จ: ' + (err.message || err) };
     }
@@ -564,9 +567,77 @@ async function openGroups() {
     active: true, mode: 'parallel', tabIds, index: 0,
     groupStartedAt: Date.now(), intervalMs: cfg.scrollInterval,
     ownTabs: true,                        // แท็บพวกนี้เราเปิดเอง ปิดคืนได้ตอนหยุด
+    urls: tabUrls, cycleStartedAt: Date.now(),
   });
   startTicker(cfg.scrollInterval);
   return { ok: true, opened: tabIds.length, urls };
+}
+
+/*
+ * หน้า Facebook ที่เปิดค้างนานหลายชั่วโมงมักค้าง/กินแรมจนสแกนไม่ขยับ และไม่โหลดซ้ำเอง
+ * จึงปิดทุกแท็บที่กำลังทำงานแล้วเปิดใหม่ด้วยลิงก์เดิมทุก recycleMinutes นาที (ค่าเริ่มต้น 60, 0 = ปิด)
+ * ลงทะเบียนแท็บใหม่ใน run ก่อนค่อยปิดแท็บเก่า ไม่งั้น onRemoved จะนับว่าหมดแท็บแล้วจบรอบ
+ * โควตาคอมเมนต์ไม่ถูกรีเซ็ต — แท็บเริ่มใหม่ไม่ใช่รอบใหม่ของโควตา
+ */
+const RECYCLE_DEFAULT_MIN = 60;
+let recycling = false;
+
+async function recycleIfDue(run) {
+  const cfg = await getCfg();
+  const everyMin = cfg.recycleMinutes == null ? RECYCLE_DEFAULT_MIN : Number(cfg.recycleMinutes);
+  if (!(everyMin > 0)) return;
+  if (!run.cycleStartedAt) {                       // รอบที่เริ่มก่อนมีฟีเจอร์นี้ — เริ่มนับตอนนี้
+    await setRun(Object.assign({}, run, { cycleStartedAt: Date.now() }));
+    return;
+  }
+  if (Date.now() - run.cycleStartedAt < everyMin * 60000) return;
+  await recycleTabs();
+}
+
+async function recycleTabs() {
+  if (recycling) return { ok: false, error: 'กำลังรีไซเคิลอยู่' };
+  recycling = true;
+  try {
+    const run = await getRun();
+    if (!run.active || !(run.tabIds || []).length) return { ok: false, error: 'ยังไม่ได้เริ่มทำงาน' };
+    const cfg = await getCfg();
+    const groups = (cfg.groupUrls || []).filter(Boolean);
+
+    const oldIds = [];
+    const newIds = [];
+    const newUrls = {};
+    for (const id of run.tabIds) {
+      let old;
+      try { old = await chrome.tabs.get(id); } catch (_) { continue; }   // ปิดไปแล้ว
+      // หลายแท็บ: ลิงก์กลุ่มที่เปิดไว้ตอนแรก · วนกลุ่มแท็บเดียว: กลุ่มปัจจุบัน
+      const url = (run.urls && run.urls[id]) ||
+        (run.mode !== 'parallel' && groups[run.index || 0]) || old.url;
+      try {
+        const tab = await chrome.tabs.create({ url, active: !!old.active, windowId: old.windowId });
+        newIds.push(tab.id);
+        newUrls[tab.id] = url;
+        oldIds.push(id);
+      } catch (_) { /* เปิดใหม่ไม่ได้ — คงแท็บเดิมไว้ ไม่ปิด */ }
+    }
+    if (!newIds.length) return { ok: false, error: 'เปิดแท็บใหม่ไม่สำเร็จ' };
+
+    const kept = (run.tabIds || []).filter((id) => oldIds.indexOf(id) === -1);
+    const urls = {};
+    kept.forEach((id) => { if (run.urls && run.urls[id]) urls[id] = run.urls[id]; });
+    await setRun(Object.assign({}, run, {
+      tabIds: kept.concat(newIds),
+      urls: Object.assign(urls, newUrls),
+      cycleStartedAt: Date.now(),
+      groupStartedAt: Date.now(),
+      recycles: (run.recycles || 0) + 1,
+    }));
+
+    try { await chrome.tabs.remove(oldIds); } catch (_) { /* ปิดไปแล้ว */ }
+    console.log('[MR.MOO] รีไซเคิลแท็บ', newIds.length, 'แท็บ (กันหน้าค้าง)');
+    return { ok: true, tabs: newIds.length };
+  } finally {
+    recycling = false;
+  }
 }
 
 /* หยุดทุกแท็บ closeTabs = ปิดแท็บที่เราเปิดเองด้วย */
@@ -892,6 +963,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, send) => {
         groupStartedAt: run.active ? run.groupStartedAt : Date.now(),
         intervalMs: msg.intervalMs,
         ownTabs: run.active ? run.ownTabs : false,
+        urls: run.active ? run.urls : undefined,
+        cycleStartedAt: run.active ? (run.cycleStartedAt || Date.now()) : Date.now(),
+        recycles: run.active ? run.recycles : 0,
       });
       startTicker(msg.intervalMs);
       send({ ok: true, tabId, tabs: tabIds.length });
@@ -971,6 +1045,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, send) => {
   }
 
   if (msg.type === 'open-groups') { openGroups().then(send); return true; }
+  if (msg.type === 'recycle-now') { recycleTabs().then(send); return true; }
   if (msg.type === 'stop-all') { stopAll(!!msg.closeTabs).then(send); return true; }
   if (msg.type === 'run-state') { getRun().then((r) => send({ ok: true, run: r })); return true; }
 

@@ -31,6 +31,7 @@ const DEFAULT_CFG = {
   perGroupMinutes: 5,
   idleScrollsToRotate: 10,
   maxTabs: 10,
+  recycleMinutes: 60,
   autoPost: false,
   postsPerDay: 3,
   postGapMinutes: 120,
@@ -80,7 +81,7 @@ const BOOL_FIELDS = ['autoSend', 'onlyGroups', 'expandSeeMore', 'skipIfCommented
                      'notifyComment', 'notifyPost', 'notifyError', 'priceLookup'];
 const NUM_FIELDS = ['minGapSec', 'maxPerHour', 'maxPerSession', 'maxAgeHours',
                     'scrollStep', 'scrollInterval', 'maxAiCalls',
-                    'perGroupMinutes', 'idleScrollsToRotate', 'maxTabs',
+                    'perGroupMinutes', 'idleScrollsToRotate', 'maxTabs', 'recycleMinutes',
                     'postsPerDay', 'postGapMinutes', 'postPerGroupHours', 'maxFailStreak', 'statusEveryMin',
                     'priceTimeoutSec'];
 const TEXT_FIELDS = ['aiMode', 'provider', 'apiKey', 'customUrl', 'aiModel', 'webhookUrl', 'qrText',
